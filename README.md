@@ -1,91 +1,102 @@
-# TeleXtract — Next.js + TypeScript + shadcn/ui
+# TeleXtract — Next.js + TypeScript + shadcn/ui + real Telegram backend
 
-This is the UI/UX of your original Flask + Telethon app, rebuilt as a
-Next.js 16 (App Router) + TypeScript project styled with Tailwind + shadcn/ui
-primitives. It keeps the original "console" aesthetic (Space Grotesk / Inter /
-JetBrains Mono, dark background, teal accent, bar-meter progress).
+The UI/UX of your original Flask + Telethon app, rebuilt as Next.js 16 (App
+Router) + TypeScript, styled with Tailwind + shadcn/ui — **now wired to a
+real Telegram backend**, not the mock from the first pass.
 
-**The download engine is not wired up yet — this ships with a mock backend**
-so the whole UI is clickable today. See "Wiring up the real backend" below.
+## What changed from the UI-only version
 
-## What's here
+The download engine is real, built on [`teleproto`](https://npmjs.com/package/teleproto)
+— an actively maintained fork of gramjs (the original `telegram` npm package
+is now archived; its author points people to teleproto). It lives in
+`lib/telegram/`:
 
-- `app/page.tsx` — main screen: auth gate → download console → active/history tabs
-- `components/` — `login-card`, `download-console`, `job-card`, `history-card`,
-  `conflict-dialog`, `job-meter`, plus shadcn primitives in `components/ui/`
-- `app/api/**/route.ts` — one route per original Flask endpoint (`/api/auth/*`,
-  `/api/jobs/*`, `/api/history/*`, `/api/progress/:jobId` as SSE, etc.)
-- `lib/mock-store.ts` — in-memory fake backend the routes currently call
-- `lib/types.ts` — shared `Job` / `HistoryItem` / `AuthStatus` shapes
+- `env.ts` — reads `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` from the environment
+- `session-store.ts` — persists your login session to `data/session.txt`
+- `auth-manager.ts` — the real phone → code → 2FA login flow
+- `link-resolver.ts` — parses public (`t.me/name/123`) and private
+  (`t.me/c/123/456`) message links and fetches the message
+- `jobs.ts` — runs real downloads, streaming straight to disk, with
+  pause/cancel via `AbortController`
+- `history-store.ts` / `folders-store.ts` — persisted JSON, same shape as
+  the original app's `history.json` / `folders.json`
 
-## Run it locally
+Every route under `app/api/**` now calls these instead of the old mock store.
+
+## One honest limitation
+
+**"Resume" restarts the download rather than continuing from where it left
+off.** Byte-offset resume was removed from gramjs's public API upstream (and
+isn't exposed in teleproto's `downloadMedia`/`downloadFile` either — see
+[gram-js/gramjs#326](https://github.com/gram-js/gramjs/issues/326)). Pause and
+cancel both work correctly (they abort the in-flight request via
+`AbortSignal`); resume just starts over. True byte-level resume is possible
+via Telegram's raw `upload.GetFile` with a manually managed offset, but it's
+enough lower-level protocol work (chunk alignment, DC routing) that it's worth
+doing as a deliberate follow-up rather than folding in silently here.
+
+## Setup
+
+1. Get an API ID and hash from <https://my.telegram.org/apps>.
+2. Copy `.env.example` to `.env.local` and fill in `TELEGRAM_API_ID` /
+   `TELEGRAM_API_HASH`.
+3. `npm install`
+4. `npm run dev`, open <http://localhost:3000>, log in with your real phone
+   number and Telegram's actual login code.
+
+Your session is saved to `data/session.txt` so you won't need to log in again
+on the next run. `data/` and `downloads/` are git-ignored.
+
+## Deploying
+
+**This cannot run as Vercel serverless functions** — the reasons from the
+first pass still apply and now matter for real:
+
+- Downloads and the SSE progress stream need a long-lived Node process;
+  Vercel functions are stateless and time-limited.
+- The session file and downloaded videos need a persistent disk; Vercel
+  functions don't have one.
+
+Deploy this Next.js app to a host with a persistent process and disk instead
+— **Railway, Render, or Fly.io** all work well for a single Next.js app:
+
+1. Push this project to a Git repo.
+2. Create a new service on your chosen host, pointing at the repo.
+   - Build command: `npm run build`
+   - Start command: `npm run start`
+3. Set environment variables: `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, and
+   optionally `DATA_DIR` / `DOWNLOAD_ROOT` if you want them somewhere other
+   than the defaults.
+4. **Attach a persistent volume** mounted at whatever `DATA_DIR` and
+   `DOWNLOAD_ROOT` point to (or just leave the defaults `./data` and
+   `./downloads` and mount the volume at the app's working directory). Without
+   this, your session and downloaded files disappear on every redeploy.
+5. After your first login through the deployed app, open `data/session.txt`
+   (via your host's shell/file browser) and copy its contents into a
+   `TELEGRAM_SESSION` environment variable as a backup — belt-and-suspenders
+   in case the volume ever gets reset.
+
+If you'd still like a Vercel-hosted piece: you could deploy just the Next.js
+frontend to Vercel and have it call this backend over HTTP on Railway/Render/
+Fly, rather than running the download engine inside Vercel's functions. That's
+a bigger restructuring (splitting frontend/backend into two deployments) and
+isn't done here — this project currently expects to run as one app on one
+persistent host.
+
+## Security
+
+Since this may be publicly reachable, remember: **whoever can reach this
+app's `/api/*` routes can act as your Telegram account** (start downloads,
+read your channels). The login gate is Telegram's own phone/code/2FA flow —
+there's no separate password wall in front of the app itself. If you deploy
+this somewhere public, put your host's access controls in front of it (IP
+allowlist, Railway/Render's built-in auth options, or a reverse proxy with
+basic auth) rather than relying on the Telegram login alone.
+
+## Running locally after cloning
 
 ```bash
+cp .env.example .env.local   # fill in TELEGRAM_API_ID / TELEGRAM_API_HASH
 npm install
 npm run dev
 ```
-
-Open http://localhost:3000. Log in with any phone number; use code `2222` to
-see the 2FA/password step, or any other code to skip straight in. Starting a
-"download" simulates progress over a few seconds so you can see pause/resume/
-cancel and the history tab working.
-
-## Wiring up the real backend
-
-Every file in `app/api/**/route.ts` has a `TODO(backend)` comment marking
-exactly what it should call instead of the mock. The request/response shapes
-already match your original Flask routes, so the frontend won't need to
-change — only the route handler bodies and `lib/mock-store.ts`.
-
-**Before you wire it up for real, know the constraints that come with moving
-this to Vercel:**
-
-1. **Telethon is Python; Vercel functions run Node.js.** You'll need to either
-   (a) rewrite the download engine in Node using [`gramjs`](https://gram.js.org/)
-   (the closest equivalent to Telethon), or (b) keep a small Python service
-   running elsewhere and have these Next.js routes call it over HTTP.
-
-2. **Long-running downloads and pause/resume don't fit serverless functions.**
-   Vercel functions are stateless and time-limited. A multi-minute video
-   download with pause/resume needs a persistent process — a small VPS,
-   Railway, Render, or Fly.io app — not a Vercel serverless function. Vercel
-   can still host this Next.js frontend/API layer; it would just proxy to
-   that persistent worker rather than doing the download itself.
-
-3. **The SSE progress endpoint** (`/api/progress/[jobId]`) needs a long-lived
-   connection to push updates. This works locally and on a persistent Node
-   host; on Vercel it's constrained by the function's execution limit, so for
-   production you'd likely poll `/api/jobs` on an interval instead, or push
-   updates through a service built for it (e.g. Pusher, Ably, or your worker's
-   own websocket).
-
-4. **The Telegram session file is a live credential.** Whatever replaces
-   `my_session.session` (however you persist gramjs auth) should never be
-   reachable by anyone but you — put real authentication in front of this
-   app before putting it on a public URL, since anyone who can reach these
-   API routes could act as your Telegram account.
-
-5. **The native folder-picker dialog can never work on a server** (this was
-   already Codespaces-incompatible in the original app) — `/api/pick-folder`
-   intentionally always returns "unavailable," matching the original's
-   headless-environment behavior. Users type a folder path instead.
-
-## Deploying the frontend to Vercel
-
-The UI and mock API deploy to Vercel as-is:
-
-```bash
-npm i -g vercel   # or use the Vercel dashboard
-vercel
-```
-
-Once you've wired a real backend per above, the same `vercel` deploy will
-pick it up — just make sure any backend URL/secrets are added as Vercel
-environment variables (Project Settings → Environment Variables), never
-committed to the repo.
-
-## shadcn/ui
-
-Components live in `components/ui/`, written by hand to match this project's
-theme rather than generated, but `components.json` is in place so you can
-also run `npx shadcn@latest add <component>` to pull in more of them later.

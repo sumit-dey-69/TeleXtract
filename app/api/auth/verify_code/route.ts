@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
+import { verifyCode } from "@/lib/telegram/auth-manager";
 
-// POST /api/auth/verify_code  { phone, code }
-// TODO(backend): call client.sign_in(phone, code); catch SessionPasswordNeededError
-// and return { needs_password: true } exactly like the original app did.
+// POST /api/auth/verify_code  { code }
 export async function POST(req: Request) {
   const { code } = await req.json();
   if (!code) {
     return NextResponse.json({ error: "Login code is required." }, { status: 400 });
   }
-
-  // Demo behaviour: code "2222" simulates an account with 2FA enabled.
-  if (code === "2222") {
-    store.needsPassword = true;
-    return NextResponse.json({ needs_password: true });
+  try {
+    const result = await verifyCode(code);
+    if (result.status === "awaiting_password") {
+      return NextResponse.json({ needs_password: true });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "That code didn't work." },
+      { status: 200 }
+    );
   }
-
-  store.authorized = true;
-  store.name = "Demo Account";
-  return NextResponse.json({ ok: true });
 }

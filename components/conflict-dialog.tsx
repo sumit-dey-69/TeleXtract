@@ -67,15 +67,15 @@ function ConflictDialogInner({
           className="flex gap-2.5"
         >
           <Input autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
-          <Button type="submit">Continue</Button>
+          <Button type="submit" className="cursor-pointer">Continue</Button>
         </form>
         <DialogFooter>
           <button
             type="button"
             onClick={onCancel}
-            className="text-left font-mono text-[11.5px] text-muted underline"
+            className="text-left font-mono text-[11.5px] text-muted underline cursor-pointer"
           >
-            ‹ cancel this download
+            ‹- cancel this download
           </button>
         </DialogFooter>
       </DialogContent>
