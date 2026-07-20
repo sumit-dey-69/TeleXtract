@@ -1,4 +1,4 @@
-import type { Job, HistoryItem, SavedFolder } from "./types";
+import type { HistoryItem, Job, SavedFolder } from "./types";
 
 /**
  * MOCK BACKEND
@@ -25,11 +25,11 @@ type Store = {
   history: HistoryItem[];
 };
 
-const globalForStore = globalThis as unknown as { __downlinkStore?: Store };
+const globalForStore = globalThis as unknown as { __telextractStore?: Store };
 
 export const store: Store =
-  globalForStore.__downlinkStore ??
-  (globalForStore.__downlinkStore = {
+  globalForStore.__telextractStore ??
+  (globalForStore.__telextractStore = {
     authorized: false,
     name: null,
     pendingPhone: null,

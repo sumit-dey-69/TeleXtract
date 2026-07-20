@@ -1,16 +1,16 @@
 "use client";
 
-import { ConflictDialog } from "@/components/conflict-dialog";
-import { DownloadConsole } from "@/components/download-console";
-import { HistoryCard } from "@/components/history-card";
-import { JobCard } from "@/components/job-card";
-import { LoginCard } from "@/components/login-card";
-import { StatusEyebrow } from "@/components/status-eyebrow";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { AuthStatus, HistoryItem, Job } from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { StatusEyebrow } from "@/components/status-eyebrow";
+import { LoginCard } from "@/components/login-card";
+import { DownloadConsole } from "@/components/download-console";
+import { ConflictDialog } from "@/components/conflict-dialog";
+import { JobCard } from "@/components/job-card";
+import { HistoryCard } from "@/components/history-card";
 import { suggestAlternative } from "@/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { AuthStatus, Job, HistoryItem } from "@/lib/types";
 
 export default function Page() {
   const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -87,7 +87,7 @@ export default function Page() {
         setConflict({
           link,
           destFolder,
-          message: `A file named "${data.filename}" already exists in that folder. Rename it to continue.`,
+          message: `A file with same name already exists in that folder. Rename it to continue.`,
           suggested: suggestion,
         });
         pendingResolve.current = resolve;

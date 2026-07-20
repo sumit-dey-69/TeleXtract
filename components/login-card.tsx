@@ -76,7 +76,7 @@ export function LoginCard({ onLoggedIn }: { onLoggedIn: () => void }) {
             <form onSubmit={sendCode} className="flex gap-2.5">
               <Input
                 id="phone"
-                placeholder="+91-xxxxxxxxxx"
+                placeholder="+917638853518"
                 autoComplete="off"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}

@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
-import type { AuthStatus } from "@/lib/types";
+import { getStatus } from "@/lib/telegram/auth-manager";
 
-// GET /api/auth/status — mirrors the original Flask route of the same name.
-// TODO(backend): replace with a call to your Telethon/gramjs auth service.
+// GET /api/auth/status
 export async function GET() {
-  const body: AuthStatus = {
-    authorized: store.authorized,
-    name: store.name ?? undefined,
-  };
-  return NextResponse.json(body);
+  const status = await getStatus();
+  return NextResponse.json(status);
 }

@@ -1,10 +1,6 @@
-import { store } from "@/lib/mock-store";
+import { getJob, onJobUpdate } from "@/lib/telegram/jobs";
 
-// GET /api/progress/:jobId — Server-Sent Events stream.
-// The frontend opens this with `new EventSource(...)` and expects one JSON
-// object per `message` event, matching the Job shape in lib/types.ts.
-// TODO(backend): replace the interval below with real push updates from your
-// download engine (e.g. forward Telethon's progress callback through here).
+// GET /api/progress/:jobId — Server-Sent Events stream of live job progress.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ jobId: string }> }
@@ -14,25 +10,31 @@ export async function GET(
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
+      let closed = false;
 
-      const send = () => {
-        const job = store.jobs.get(jobId);
-        if (!job) {
-          controller.close();
-          return;
-        }
+      const send = (job: ReturnType<typeof getJob>) => {
+        if (closed || !job) return;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(job)}\n\n`));
         if (["done", "error", "cancelled", "deleted"].includes(job.status)) {
-          clearInterval(timer);
+          closed = true;
+          unsubscribe();
           controller.close();
         }
       };
 
-      send();
-      const timer = setInterval(send, 500);
+      const current = getJob(jobId);
+      if (!current) {
+        controller.close();
+        return;
+      }
+      send(current);
 
-      // Clean up if the client disconnects.
-      return () => clearInterval(timer);
+      const unsubscribe = onJobUpdate(jobId, send);
+
+      return () => {
+        closed = true;
+        unsubscribe();
+      };
     },
   });
 

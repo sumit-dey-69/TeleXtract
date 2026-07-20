@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
+import { listHistory } from "@/lib/telegram/history-store";
 
 // GET /api/history
 export async function GET() {
-  return NextResponse.json(store.history);
+  return NextResponse.json(listHistory());
 }

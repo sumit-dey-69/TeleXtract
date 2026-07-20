@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
+import { removeHistoryItem } from "@/lib/telegram/history-store";
 
 // DELETE /api/history/:jobId
 export async function DELETE(
@@ -7,6 +7,6 @@ export async function DELETE(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
-  store.history = store.history.filter((h) => h.job_id !== jobId);
+  removeHistoryItem(jobId);
   return NextResponse.json({ ok: true });
 }
