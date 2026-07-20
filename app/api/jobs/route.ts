@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
+import { listJobs } from "@/lib/telegram/jobs";
 
 // GET /api/jobs
 export async function GET() {
-  return NextResponse.json(Array.from(store.jobs.values()));
+  return NextResponse.json(listJobs());
 }

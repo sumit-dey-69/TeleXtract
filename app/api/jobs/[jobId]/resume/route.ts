@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { store, startSimulatedDownload } from "@/lib/mock-store";
+import { resumeJob } from "@/lib/telegram/jobs";
 
-// POST /api/jobs/:jobId/resume
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
-  const job = store.jobs.get(jobId);
-  if (job && job.status === "paused") {
-    job.status = "downloading";
-    startSimulatedDownload(job);
-  }
+  resumeJob(jobId);
   return NextResponse.json({ ok: true });
 }

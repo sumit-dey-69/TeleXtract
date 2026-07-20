@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/mock-store";
+import { logout } from "@/lib/telegram/auth-manager";
 
 // POST /api/auth/logout
-// TODO(backend): revoke the Telegram session and delete the .session file server-side.
 export async function POST() {
-  store.authorized = false;
-  store.name = null;
-  store.pendingPhone = null;
-  store.needsPassword = false;
+  await logout();
   return NextResponse.json({ ok: true });
 }
