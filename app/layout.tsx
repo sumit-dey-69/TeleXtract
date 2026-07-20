@@ -1,5 +1,7 @@
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -21,8 +23,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TeleXtract — Telegram Video Fetcher",
-  description: "Pull video from your Telegram channels. Pause, resume, or cancel anytime.",
+  title: "TeleXtract | Telegram Media Downloader",
+  description:
+    "A fast and secure Telegram media downloader for videos, photos, documents, and more.",
 };
 
 export default function RootLayout({
@@ -36,6 +39,8 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans antialiased min-h-screen flex justify-center px-5 py-14 sm:py-20`}
       >
         <div className="w-full max-w-[640px]">{children}</div>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
