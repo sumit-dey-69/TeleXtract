@@ -4,17 +4,25 @@
 
 ### Secure Telegram Media Downloader built with Next.js 16
 
-Download videos, documents, photos and other media from Telegram using your own authenticated Telegram account.
+Download videos, documents, photos, and other media from Telegram using your own authenticated Telegram account.
 
-Built with Next.js • TypeScript • Tailwind CSS • TeleProto
+**Built with:**
+Next.js 16 (App Router) • React 19 • TypeScript 5 • Tailwind CSS v4 • shadcn/ui • TeleProto (MTProto) • Server-Sent Events
 
 </div>
+
 <p align="center">
   <a href="https://github.com/sumit-dey-69/TeleXtract">
     <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js">
   </a>
   <a href="https://github.com/sumit-dey-69/TeleXtract">
+    <img src="https://img.shields.io/badge/React-19-61DAFB" alt="React">
+  </a>
+  <a href="https://github.com/sumit-dey-69/TeleXtract">
     <img src="https://img.shields.io/badge/TypeScript-5-blue" alt="TypeScript">
+  </a>
+  <a href="https://github.com/sumit-dey-69/TeleXtract">
+    <img src="https://img.shields.io/badge/Tailwind_CSS-v4-38BDF8" alt="Tailwind CSS">
   </a>
   <a href="https://github.com/sumit-dey-69/TeleXtract/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/sumit-dey-69/TeleXtract" alt="License">
@@ -32,6 +40,63 @@ Built with Next.js • TypeScript • Tailwind CSS • TeleProto
 
 ---
 
+## ✨ Features
+
+- 🔐 Secure Telegram authentication (OTP + 2FA)
+- 📥 Download media from public and private Telegram messages
+- ⚡ Real-time download progress via Server-Sent Events (SSE)
+- ⏸ Pause, resume, and cancel downloads
+- 📂 Custom download folders
+- 🗂 Download history
+- 🧹 Automatic cleanup of downloaded files
+- 📱 Responsive interface
+- 💾 Persistent Telegram sessions
+- 🔄 Conflict handling for existing files
+- 🚀 Built with Next.js 16 App Router
+- 🐳 Docker and Docker Compose support
+
+---
+
+## 🏗 Architecture
+
+```
+Browser
+   │
+   ▼
+Next.js 16 App Router
+   │
+   ├── Authentication
+   ├── Download Manager
+   ├── Job Queue
+   ├── History Store
+   ├── Folder Manager
+   └── TeleProto (MTProto)
+              │
+              ▼
+        Telegram Servers
+```
+
+---
+
+## 📁 Project Structure
+
+```
+app/
+ ├── api/
+ ├── download/
+ ├── auth/
+ └── ...
+
+components/
+lib/
+public/
+
+downloads/
+data/
+```
+
+---
+
 ## 📦 Installation
 
 Follow these steps to set up TeleXtract on your local machine for development or self-hosting.
@@ -40,8 +105,8 @@ Follow these steps to set up TeleXtract on your local machine for development or
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** 20 or later
-- **npm** (included with Node.js) or **Bun**
+- **Node.js** 22 LTS or later
+- **npm** (included with Node.js), **pnpm**, or **Bun**
 - **Git**
 - A **Telegram account**
 - Telegram API credentials from **https://my.telegram.org/apps**
@@ -95,8 +160,6 @@ curl -fsSL https://bun.sh/install | bash
 powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
----
-
 #### pnpm
 
 Using **npm**:
@@ -124,8 +187,6 @@ Using **Chocolatey** (Windows):
 choco install pnpm
 ```
 
----
-
 #### Node.js (npm)
 
 If you don't have Node.js installed:
@@ -148,7 +209,7 @@ https://nodejs.org/
 
 ---
 
-Once the dependencies are installed, continue with the [Configuration](#-configuration) section.
+Once the dependencies are installed, continue with the [Configuration](#️-configuration) section.
 
 ## ⚙️ Configuration
 
@@ -174,6 +235,7 @@ DATA_DIR=./data
 DOWNLOAD_ROOT=./downloads
 
 TELEGRAM_SESSION=
+FILE_RETENTION_MINUTES=60
 ```
 
 ### Environment Variables
@@ -185,6 +247,7 @@ TELEGRAM_SESSION=
 | `DATA_DIR` | Optional | Directory used to store application data and Telegram sessions. |
 | `DOWNLOAD_ROOT` | Optional | Default directory where downloaded media will be saved. |
 | `TELEGRAM_SESSION` | Optional | Existing Telegram session string. Useful for restoring sessions after deployment. |
+| `FILE_RETENTION_MINUTES` | Optional | How long downloaded files are kept before automatic cleanup runs. |
 
 > **Important**
 >
@@ -273,8 +336,6 @@ https://t.me/c/123456789/456
 
 > **Note:** Your Telegram account must already have permission to access the message. TeleXtract cannot bypass Telegram's privacy restrictions.
 
----
-
 ### Step 2 — Paste the Link
 
 Paste the copied Telegram message link into the input field on the dashboard.
@@ -286,11 +347,11 @@ TeleXtract will automatically:
 - Detect the available media
 - Prepare the download
 
----
-
 ### Step 3 — Download the Media
 
 Click **Download** to start downloading.
+
+Downloads are streamed in real time using Server-Sent Events (SSE), allowing the UI to display live progress, speed, pause, resume, cancellation, and completion — all without refreshing the page.
 
 During the download, you can:
 
@@ -299,8 +360,6 @@ During the download, you can:
 - ❌ Cancel the download
 
 When the download completes, the media is saved to your configured download directory and added to your download history.
-
----
 
 ### Supported Media
 
@@ -314,8 +373,6 @@ TeleXtract can download most media types supported by Telegram, including:
 - 🖼 Images
 - 📦 Other downloadable Telegram media
 
----
-
 ### Download History
 
 Every completed download is automatically recorded.
@@ -327,13 +384,15 @@ From the dashboard you can:
 - Organize downloads into folders
 - Track download status
 
----
+### File Conflict Handling
+
+When a file with the same name already exists, TeleXtract prompts you before overwriting the existing file or choosing a different destination.
 
 ### Session Persistence
 
 After your first successful login, TeleXtract securely stores your Telegram session.
 
-This means you won't need to log in every time you restart the application unless:
+Telegram sessions and download history are stored on disk. This means you won't need to log in every time you restart the application unless:
 
 - Your session expires
 - You manually log out
@@ -347,8 +406,6 @@ TeleXtract is designed to run as a **persistent Node.js application**.
 
 Unlike typical serverless applications, TeleXtract maintains Telegram sessions, streams download progress, and stores downloaded media on disk. Because of this, it requires a hosting platform that supports persistent storage and long-running processes.
 
----
-
 ### Recommended Platforms
 
 | Platform | Status |
@@ -359,8 +416,6 @@ Unlike typical serverless applications, TeleXtract maintains Telegram sessions, 
 | Docker | ✅ Supported |
 | VPS / Self-Hosted | ✅ Supported |
 | Vercel | ❌ Not Recommended |
-
----
 
 ### Deploying on Render
 
@@ -393,17 +448,17 @@ DOWNLOAD_ROOT=/var/data/downloads
 
 Deploy the application and authenticate with Telegram after the first launch.
 
----
+### 🐳 Docker
 
-### Docker Deployment
+TeleXtract uses a standalone Next.js production build (`output: "standalone"`) for smaller images and faster startup, and is the recommended deployment method when using Docker.
 
-Build the Docker image:
+**Build the image:**
 
 ```bash
 docker build -t telextract .
 ```
 
-Run the container:
+**Run the container:**
 
 ```bash
 docker run \
@@ -416,7 +471,11 @@ docker run \
 
 Mounting the `data` and `downloads` directories ensures Telegram sessions and downloaded files persist between container restarts.
 
----
+### Docker Compose
+
+```bash
+docker compose up --build
+```
 
 ### Why Vercel Is Not Recommended
 
@@ -437,8 +496,6 @@ ENOENT: no such file or directory, mkdir '/var/task/downloads'
 ```
 
 For production deployments, use Render, Railway, Docker, Fly.io, or your own VPS.
-
----
 
 ### Production Checklist
 
@@ -518,13 +575,15 @@ If you're unsure about a feature or significant change, consider opening an issu
 
 Planned improvements include:
 
-- Multi-user authentication
-- Support for multiple Telegram accounts
-- True resumable downloads
-- Download queue management
-- Docker Compose support
+- Multi-account support
+- Download queue priorities
+- Scheduled downloads
+- Resume after restart
+- Search and filtering
+- Bulk downloads
+- Folder synchronization
+- Download statistics
 - Advanced download filters
-- Search and sorting
 - Mobile UI improvements
 - Performance optimizations
 - Plugin support
@@ -544,12 +603,13 @@ See the [LICENSE](LICENSE) file for more details.
 TeleXtract is built using several excellent open-source projects:
 
 - Next.js
-- React
+- React 19
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS v4
 - shadcn/ui
 - TeleProto
-- Lucide Icons
+- Radix UI
+- Lucide React
 
 A huge thanks to the maintainers and contributors of these projects.
 
@@ -571,9 +631,6 @@ This application only downloads media that the authenticated Telegram account is
 
 If TeleXtract helps you, consider giving the project a star on GitHub. It helps others discover the project and supports future development.
 
-Made with ❤️ using **Next.js**, **TypeScript**, **Tailwind CSS**, **shadcn/ui**, and **TeleProto**.
+Made with ❤️ using **Next.js**, **React**, **TypeScript**, **Tailwind CSS**, **shadcn/ui**, and **TeleProto**.
 
 </div>
-
----
-
