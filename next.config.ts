@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "127.0.0.1",
     "*.app.github.dev",
   ],
+  output: "standalone",
 };
 
 export default nextConfig;
