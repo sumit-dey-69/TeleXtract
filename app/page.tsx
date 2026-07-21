@@ -116,7 +116,7 @@ export default function Page() {
       const newJob: Job = {
         job_id: data.job_id,
         link,
-        dest_folder: folder || "downloads",
+        dest_folder: folder || "(server default)",
         status: "downloading",
         pct: 0,
         current: 0,
