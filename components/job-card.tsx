@@ -95,7 +95,12 @@ export function JobCard({
         </span>
       </div>
       {job.dest_folder && (
-        <div className="mt-1.5 truncate font-mono text-[11px] text-muted">{job.dest_folder}</div>
+        <div
+          className="mt-1.5 truncate font-mono text-[11px] text-muted"
+          title={job.dest_folder}
+        >
+          {job.dest_folder}
+        </div>
       )}
       {job.status === "error" && job.error && (
         <div className="mt-2 font-mono text-xs text-err">{job.error}</div>

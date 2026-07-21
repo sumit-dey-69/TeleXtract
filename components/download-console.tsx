@@ -64,7 +64,7 @@ export function DownloadConsole({
 
         <div className="flex gap-2.5">
           <Input
-            placeholder="downloads"
+            placeholder="(server default)"
             autoComplete="off"
             value={folder}
             onChange={(e) => setFolder(e.target.value)}
@@ -76,7 +76,8 @@ export function DownloadConsole({
 
         <p className="font-mono text-[11.5px] text-muted">
           supports public (t.me/username/id) and private (t.me/c/id/msg) links · leave folder
-          blank to use ./downloads · leave rename blank to keep the original filename
+          blank to use the server&apos;s default download folder · leave rename blank to keep the
+          original filename
         </p>
       </CardContent>
     </Card>

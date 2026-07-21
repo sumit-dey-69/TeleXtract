@@ -43,7 +43,9 @@ export function HistoryCard({
       <div className="mb-2.5 truncate font-display text-sm font-semibold">
         {item.filename || "(filename unknown)"}
       </div>
-      <div className="truncate font-mono text-[11px] text-muted">{item.dest_folder || ""}</div>
+      <div className="truncate font-mono text-[11px] text-muted" title={item.dest_folder || ""}>
+        {item.dest_folder || ""}
+      </div>
       <div className="mt-2 flex justify-between font-mono text-[11.5px] text-muted">
         <span>Downloaded: {fmtWhen(item.timestamp)}</span>
         <span>{fmtBytes(item.total)}</span>

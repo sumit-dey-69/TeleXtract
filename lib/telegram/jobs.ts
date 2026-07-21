@@ -70,10 +70,18 @@ export function getJob(jobId: string): JobRecord | undefined {
 }
 
 export function resolveDestPath(destFolder: string, filename: string): string {
-  const folder = destFolder?.trim() ? destFolder.trim() : DEFAULT_DOWNLOAD_ROOT;
-  const abs = path.isAbsolute(folder)
-    ? folder
-    : path.join(/* turbopackIgnore: true */ process.cwd(), folder);
+  const base = path.resolve(DEFAULT_DOWNLOAD_ROOT);
+  const trimmed = destFolder?.trim();
+
+  let abs: string;
+  if (!trimmed) {
+    abs = base;
+  } else if (path.isAbsolute(trimmed)) {
+    abs = trimmed;
+  } else {
+    abs = path.join(base, trimmed);
+  }
+
   fs.mkdirSync(abs, { recursive: true });
   return path.join(abs, filename);
 }
@@ -95,7 +103,7 @@ export function startDownload(link: string, destFolder: string, filename: string
   const job: InternalJob = {
     job_id,
     link,
-    dest_folder: destFolder || DEFAULT_DOWNLOAD_ROOT,
+    dest_folder: destFolder || "",
     filename: filename || "",
     status: "resolving",
     current: 0,
@@ -123,6 +131,8 @@ function runDownload(job: InternalJob) {
     emitUpdate(job.job_id);
 
     const destPath = resolveDestPath(job.dest_folder, job.filename);
+    job.dest_folder = path.dirname(destPath); // now the real absolute folder, for display
+    emitUpdate(job.job_id);
 
     await client.downloadMedia(message, {
       outputFile: destPath,
