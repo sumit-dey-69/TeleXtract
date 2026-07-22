@@ -492,6 +492,18 @@ docker compose up --build
 
 This uses the included `docker-compose.yml`, which builds from the local `Dockerfile`, reads `.env.local`, publishes port `3000`, and mounts `./data` and `./downloads` the same way as the manual `docker run` command above.
 
+#### Permission errors on mounted volumes (e.g. `EACCES ... mkdir '/var/data/downloads'`)
+
+The container runs as a non-root user for security. A persistent volume
+(a Render Disk, a Railway/Fly volume, a `docker run -v` mount) is attached
+fresh at container start and typically comes in owned by `root`, so the
+non-root user can't write to it by default. `docker-entrypoint.sh` fixes this
+automatically on every container start: it `chown`s whatever `DATA_DIR` and
+`DOWNLOAD_ROOT` actually point to, then drops to the non-root user before
+starting the app — no manual steps needed. If you still see a permission
+error, double-check `DATA_DIR`/`DOWNLOAD_ROOT` exactly match your volume's
+mount path.
+
 ### Why Vercel Is Not Recommended
 
 Although the frontend can be deployed on Vercel, the complete application is **not intended** to run inside Vercel Serverless Functions.
