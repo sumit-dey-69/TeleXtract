@@ -30,13 +30,13 @@ export function JobCard({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (["done", "error", "cancelled", "deleted"].includes(initialJob.status)) return;
+    if (["error", "cancelled", "deleted"].includes(initialJob.status)) return;
 
     const source = new EventSource(`/api/progress/${initialJob.job_id}`);
     source.onmessage = (ev) => {
       const state: Job = JSON.parse(ev.data);
       setJob(state);
-      if (["done", "error", "cancelled", "deleted"].includes(state.status)) {
+      if (["error", "cancelled", "deleted"].includes(state.status)) {
         source.close();
       }
     };

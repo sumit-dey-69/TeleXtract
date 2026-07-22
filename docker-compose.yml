@@ -1,18 +1,12 @@
 services:
   telextract:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: telextract:latest
+    build: .
     container_name: telextract
-    restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
       - .env.local
-    environment:
-      DATA_DIR: /app/data
-      DOWNLOAD_ROOT: /app/downloads
     volumes:
       - ./data:/app/data
       - ./downloads:/app/downloads
+    restart: unless-stopped

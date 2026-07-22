@@ -47,6 +47,20 @@ export function markFileDeleted(jobId: string) {
   writeAll(items);
 }
 
+/** Marks every history item as no-longer-on-disk. Used when all downloads are purged at once (logout / tab close). */
+export function markAllFilesDeleted() {
+  const items = readAll();
+  for (const item of items) item.file_exists = false;
+  writeAll(items);
+}
+
+/** History items whose file is still marked as present but is older than `cutoffMs` (epoch ms). */
+export function listExpiredHistory(cutoffMs: number): HistoryItem[] {
+  return readAll().filter(
+    (i) => i.status === "done" && i.file_exists !== false && i.timestamp * 1000 < cutoffMs
+  );
+}
+
 export function removeHistoryItem(jobId: string) {
   writeAll(readAll().filter((i) => i.job_id !== jobId));
 }

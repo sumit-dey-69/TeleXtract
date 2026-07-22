@@ -64,10 +64,16 @@ const tmpBase = path.join(os.tmpdir(), "telextract");
 export const DATA_DIR =
   process.env.DATA_DIR || (needsTmpFallback ? path.join(tmpBase, "data") : "./data");
 
-/**
- * Where downloaded video files land by default, and the base that any
+/** Where downloaded video files land by default, and the base that any
  * relative per-download folder (typed into the UI) resolves against — so
  * user-entered relative paths can never land under a read-only app bundle.
  */
 export const DEFAULT_DOWNLOAD_ROOT =
   process.env.DOWNLOAD_ROOT || (needsTmpFallback ? path.join(tmpBase, "downloads") : "./downloads");
+
+/**
+ * How long a completed download is kept before it's auto-deleted, in
+ * minutes. Set FILE_RETENTION_MINUTES=0 to disable time-based cleanup
+ * entirely (logout/tab-close cleanup, if enabled, still applies).
+ */
+export const FILE_RETENTION_MINUTES = Number(process.env.FILE_RETENTION_MINUTES ?? 60);

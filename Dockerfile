@@ -1,84 +1,46 @@
 # syntax=docker/dockerfile:1
 
-#####################################
-# 1. Dependencies
-#####################################
-FROM node:22-alpine AS deps
+FROM node:20-alpine AS base
 
-# Needed for some native modules on Alpine
-RUN apk add --no-cache libc6-compat
-
+# ---- Dependencies -----------------------------------------------------
+FROM base AS deps
 WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-# Copy only the manifest/lockfiles first for better layer caching
-COPY package.json package-lock.json* pnpm-lock.yaml* bun.lockb* ./
-
-RUN \
-  if [ -f bun.lockb ]; then \
-    npm install -g bun && bun install --frozen-lockfile; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then \
-    npm ci; \
-  else \
-    npm install; \
-  fi
-
-#####################################
-# 2. Build
-#####################################
-FROM node:22-alpine AS builder
-
+# ---- Build --------------------------------------------------------------
+FROM base AS builder
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Dummy values so `next build` can type-check/collect env references —
+# real credentials are supplied at `docker run` time via --env-file/-e.
+ENV TELEGRAM_API_ID=0
+ENV TELEGRAM_API_HASH=build
+RUN npm run build
 
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Build the standalone Next.js output (requires `output: "standalone"` in next.config)
-RUN \
-  if [ -f bun.lockb ]; then \
-    npm install -g bun && bun run build; \
-  elif [ -f pnpm-lock.yaml ]; then \
-    corepack enable && corepack prepare pnpm@latest --activate && pnpm run build; \
-  else \
-    npm run build; \
-  fi
-
-#####################################
-# 3. Runtime
-#####################################
-FROM node:22-alpine AS runner
-
+# ---- Runtime --------------------------------------------------------------
+FROM base AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
-# Defaults — override at `docker run` / compose time as needed
-ENV DATA_DIR=/app/data
-ENV DOWNLOAD_ROOT=/app/downloads
-
-# Non-root user
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
+  && adduser --system --uid 1001 telextract
 
-# Standalone server + static assets + public files
+# Next.js standalone output: a minimal server.js plus only the node_modules
+# it actually needs — no full node_modules copy required in this stage.
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=telextract:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=telextract:nodejs /app/.next/static ./.next/static
 
-# Persistent directories for sessions and downloaded media
-RUN mkdir -p /app/data /app/downloads \
-  && chown -R nextjs:nodejs /app/data /app/downloads
+# Writable dirs for session/history/downloads — mount volumes here in
+# production (see README "Docker Deployment").
+RUN mkdir -p /app/data /app/downloads && chown -R telextract:nodejs /app/data /app/downloads
 
-VOLUME ["/app/data", "/app/downloads"]
-
-USER nextjs
+USER telextract
 
 EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 CMD ["node", "server.js"]

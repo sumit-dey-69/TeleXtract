@@ -15,7 +15,7 @@ export async function GET(
       const send = (job: ReturnType<typeof getJob>) => {
         if (closed || !job) return;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(job)}\n\n`));
-        if (["done", "error", "cancelled", "deleted"].includes(job.status)) {
+        if (["error", "cancelled", "deleted"].includes(job.status)) {
           closed = true;
           unsubscribe();
           controller.close();
