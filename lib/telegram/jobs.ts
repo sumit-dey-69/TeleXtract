@@ -2,8 +2,8 @@ import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
 import { requireClient } from "./auth-manager";
-import { DEFAULT_DOWNLOAD_ROOT } from "./env";
-import { appendHistory } from "./history-store";
+import { DEFAULT_DOWNLOAD_ROOT, FILE_RETENTION_MINUTES } from "./env";
+import { appendHistory, listExpiredHistory, markAllFilesDeleted, markFileDeleted } from "./history-store";
 import { extractFileInfo, fetchMessage } from "./link-resolver";
 
 export type JobStatus =
@@ -31,11 +31,13 @@ export interface JobRecord {
 interface InternalJob extends JobRecord {
   _controller?: AbortController;
   _generation: number; // bumped on every (re)start so stale abort/finish callbacks are ignored
+  _completedAt?: number; // epoch ms, set when status becomes "done" — used by the retention sweep
 }
 
 const g = globalThis as unknown as {
   __telextractJobs?: Map<string, InternalJob>;
   __telextractJobsEmitter?: EventEmitter;
+  __telextractCleanupTimer?: ReturnType<typeof setInterval>;
 };
 const jobs = g.__telextractJobs ?? (g.__telextractJobs = new Map());
 const emitter = g.__telextractJobsEmitter ?? (g.__telextractJobsEmitter = new EventEmitter());
@@ -43,7 +45,7 @@ emitter.setMaxListeners(0);
 
 function toPublic(job: InternalJob): JobRecord {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { _controller, _generation, ...rest } = job;
+  const { _controller, _generation, _completedAt, ...rest } = job;
   return rest;
 }
 
@@ -149,6 +151,7 @@ function runDownload(job: InternalJob) {
     if (job._generation !== generation) return;
     job.status = "done";
     job.pct = 100;
+    job._completedAt = Date.now();
     emitUpdate(job.job_id);
     appendHistory({
       job_id: job.job_id,
@@ -238,4 +241,62 @@ export function getJobFilePath(jobId: string): string {
   const job = jobs.get(jobId);
   if (!job) throw new Error("Job not found.");
   return resolveDestPath(job.dest_folder, job.filename);
+}
+
+/**
+ * Deletes every completed download's file and marks it as gone, without
+ * touching the Telegram session itself. Used for the logout and tab-close
+ * cleanup triggers. Files saved to a folder the user explicitly typed
+ * outside the managed download root are left alone — an explicit custom
+ * location is treated as intentional, not something the app should sweep.
+ */
+export function purgeAllDownloads(reason: string) {
+  let count = 0;
+  for (const job of jobs.values()) {
+    if (job.status === "done") {
+      try {
+        fs.rmSync(resolveDestPath(job.dest_folder, job.filename), { force: true });
+      } catch (err) {
+        console.error(`[telextract] purgeAllDownloads (${reason}) failed for ${job.job_id}:`, err);
+      }
+      job.status = "deleted";
+      emitUpdate(job.job_id);
+      count++;
+    }
+  }
+  markAllFilesDeleted();
+  if (count > 0) {
+    console.log(`[telextract] purged ${count} downloaded file(s) — reason: ${reason}`);
+  }
+}
+
+/** Deletes any completed download older than FILE_RETENTION_MINUTES. Safety-net cleanup that runs regardless of tab/login state. */
+function sweepExpiredFiles() {
+  if (FILE_RETENTION_MINUTES <= 0) return; // time-based cleanup disabled
+  const cutoff = Date.now() - FILE_RETENTION_MINUTES * 60_000;
+
+  for (const job of jobs.values()) {
+    if (job.status === "done" && job._completedAt && job._completedAt < cutoff) {
+      try {
+        deleteJobFile(job.job_id);
+      } catch (err) {
+        console.error(`[telextract] expiry sweep failed for job ${job.job_id}:`, err);
+      }
+    }
+  }
+
+  // Catches history entries whose job record no longer exists (e.g. after a
+  // server restart) but whose file is still on disk.
+  for (const item of listExpiredHistory(cutoff)) {
+    try {
+      fs.rmSync(resolveDestPath(item.dest_folder || "", item.filename || ""), { force: true });
+    } catch (err) {
+      console.error(`[telextract] expiry sweep failed for history ${item.job_id}:`, err);
+    }
+    markFileDeleted(item.job_id);
+  }
+}
+
+if (!g.__telextractCleanupTimer) {
+  g.__telextractCleanupTimer = setInterval(sweepExpiredFiles, 60_000);
 }

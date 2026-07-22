@@ -50,6 +50,15 @@ export default function Page() {
     })();
   }, [refreshStatus, restoreJobs]);
 
+  useEffect(() => {
+    // Best-effort: browsers don't distinguish "tab closed" from "page
+    // refreshed/navigated" — this fires for all of them. sendBeacon is used
+    // because it's guaranteed to be sent even as the page is unloading.
+    const cleanup = () => navigator.sendBeacon("/api/session/close");
+    window.addEventListener("pagehide", cleanup);
+    return () => window.removeEventListener("pagehide", cleanup);
+  }, []);
+
   async function onLoggedIn() {
     await refreshStatus();
     await restoreJobs();

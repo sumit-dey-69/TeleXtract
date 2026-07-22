@@ -83,16 +83,29 @@ Next.js 16 App Router
 ```
 app/
  ├── api/
- ├── download/
- ├── auth/
- └── ...
+ │    ├── auth/            # login, code/2FA verification, logout
+ │    ├── download/        # start a download job
+ │    ├── resolve/         # resolve a t.me link before downloading
+ │    ├── jobs/[jobId]/    # pause, resume, cancel, file, delete-file, remove
+ │    ├── progress/[jobId] # SSE live progress stream
+ │    ├── history/         # download history + per-item file/delete-file
+ │    ├── folders/         # saved destination folders
+ │    ├── pick-folder/     # native folder picker (server-side, unavailable)
+ │    └── session/close/   # best-effort cleanup on tab close
+ ├── page.tsx              # the dashboard (single page)
+ └── layout.tsx
 
 components/
-lib/
-public/
+ ├── ui/                   # shadcn/ui primitives
+ └── ...                   # login-card, download-console, job-card, etc.
 
-downloads/
-data/
+lib/
+ ├── telegram/             # auth-manager, jobs, link-resolver, session/history/folders stores
+ ├── types.ts
+ └── utils.ts
+
+downloads/                 # DOWNLOAD_ROOT default — created at runtime, git-ignored
+data/                      # DATA_DIR default (session.txt, history.json, folders.json) — git-ignored
 ```
 
 ---
@@ -247,7 +260,7 @@ FILE_RETENTION_MINUTES=60
 | `DATA_DIR` | Optional | Directory used to store application data and Telegram sessions. |
 | `DOWNLOAD_ROOT` | Optional | Default directory where downloaded media will be saved. |
 | `TELEGRAM_SESSION` | Optional | Existing Telegram session string. Useful for restoring sessions after deployment. |
-| `FILE_RETENTION_MINUTES` | Optional | How long downloaded files are kept before automatic cleanup runs. |
+| `FILE_RETENTION_MINUTES` | Optional | How long a completed download is kept before automatic cleanup deletes it. Default `60`; set to `0` to disable time-based cleanup. Downloads are also deleted immediately on logout, and on tab close/refresh (best-effort — browsers can't distinguish the two). |
 
 > **Important**
 >
@@ -476,6 +489,8 @@ Mounting the `data` and `downloads` directories ensures Telegram sessions and do
 ```bash
 docker compose up --build
 ```
+
+This uses the included `docker-compose.yml`, which builds from the local `Dockerfile`, reads `.env.local`, publishes port `3000`, and mounts `./data` and `./downloads` the same way as the manual `docker run` command above.
 
 ### Why Vercel Is Not Recommended
 
